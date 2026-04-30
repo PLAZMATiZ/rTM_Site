@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 // Замініть на ваш реальний URL бекенду
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'https://rtmapi-production.up.railway.app/api';
 
 interface LoginProps {
     onLoginSuccess: (userId: string) => void;

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import type { Tab } from '../types'; // Додано слово type
+import { GraphView } from './GraphView';
 
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'https://rtmapi-production.up.railway.app/api';
 
 interface DashboardProps {
     userId: string;
@@ -163,15 +164,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, onLogout }) => {
                         </div>
 
                         {/* Контейнер для задач (Заглушка) */}
-                        <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                        <div className="flex-1 p-6 overflow-y-auto bg-gray-50 h-[calc(100vh-73px)]">
                             {viewMode === 'list' ? (
                                 <div className="p-4 bg-white rounded shadow-sm border text-gray-500">
-                                    Тут буде список задач для вкладки {currentTab.name}...
+                                    Тут буде список задач для вкладки {currentTab.name}... 
+                                    {/* Сюди ви потім можете додати звичайний список або таблицю */}
                                 </div>
                             ) : (
-                                <div className="p-4 bg-white rounded shadow-sm border border-dashed border-gray-300 h-full flex items-center justify-center text-gray-400">
-                                    Тут буде React Flow (Граф) для задач...
-                                </div>
+                                /* Рендеримо GraphView, передаючи йому ID активної вкладки */
+                                <GraphView tabId={currentTab.id} />
                             )}
                         </div>
                     </>
