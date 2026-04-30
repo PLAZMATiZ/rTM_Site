@@ -10,7 +10,7 @@ import { TaskNode } from './TaskNode';
 import { TaskModal } from './TaskModal';
 import type { TaskItem } from '../types';
 
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'https://rtmapi-production.up.railway.app/api';
 
 interface GraphViewProps {
     tabId: string;

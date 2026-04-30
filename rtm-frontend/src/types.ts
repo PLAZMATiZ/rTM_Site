@@ -25,3 +25,11 @@ export interface TaskItem {
     status: number; // 0 = Pending, 1 = Done, 2 = Rejected
     dependentTasks: Dependency[];
 }
+
+export interface HistoryLog {
+    id: string;
+    tabId: string;
+    taskId: string | null;
+    action: string;
+    createdAt: string;
+}
