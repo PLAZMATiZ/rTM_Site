@@ -94,7 +94,7 @@ export const GraphView: React.FC<GraphViewProps> = ({ tabId }) => {
     }, [setEdges]);
 
     // Подвійний клік на ноду
-    const onNodeDoubleClick = (event: React.MouseEvent, node: Node) => {
+    const onNodeDoubleClick = (_event: React.MouseEvent, node: Node) => {
         setSelectedTask(node.data.task);
     };
 
