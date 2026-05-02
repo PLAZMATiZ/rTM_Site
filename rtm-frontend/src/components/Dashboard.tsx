@@ -3,6 +3,7 @@ import type { Tab } from '../types';
 import { ListView } from './ListView';
 import { GraphView } from './GraphView';
 import { TabHistory } from './TabHistory';
+import { Analytics } from "@vercel/analytics/next"
 
 const API_URL = 'https://rtmapi-production.up.railway.app/api';
 
@@ -230,6 +231,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, onLogout, isDarkMo
                     </div>
                 )}
             </div>
+            <Analytics />
         </div>
     );
 };
