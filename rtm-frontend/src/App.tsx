@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
 
@@ -48,6 +49,7 @@ function App() {
       ) : (
         <Login onLoginSuccess={setUserId} />
       )}
+      <Analytics />
     </div>
   );
 }
