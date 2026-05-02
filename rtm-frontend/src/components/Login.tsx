@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 
-// Замініть на ваш реальний URL бекенду
 const API_URL = 'https://rtmapi-production.up.railway.app/api';
 
 interface LoginProps {
@@ -39,27 +38,27 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="w-full max-w-sm p-8 bg-white rounded-lg shadow-md">
-                <h2 className="mb-6 text-2xl font-bold text-center text-gray-800">Вхід у Rtm</h2>
-                {error && <p className="mb-4 text-sm text-red-600 text-center">{error}</p>}
+        <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+            <div className="w-full max-w-sm p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 transition-colors">
+                <h2 className="mb-6 text-3xl font-extrabold text-center text-gray-900 dark:text-white">Rtm App</h2>
+                {error && <p className="mb-4 text-sm font-medium text-red-600 dark:text-red-400 text-center">{error}</p>}
                 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700">Username</label>
+                        <label className="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Ваш Username</label>
                         <input
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            placeholder="Введіть ваше ім'я"
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                            placeholder="Введіть ім'я"
                             required
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition"
+                        className="w-full px-4 py-3 font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors shadow-md"
                     >
                         {isLoading ? 'Завантаження...' : 'Увійти'}
                     </button>

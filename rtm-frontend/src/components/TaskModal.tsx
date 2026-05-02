@@ -22,47 +22,67 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onSave }) =
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
+        // Затемнений фон з розмиттям (Blur)
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            
+            {/* Контейнер модалки (адаптовано під темну тему) */}
+            <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-6 rounded-xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-700 transition-colors">
+                
                 <h2 className="text-xl font-bold mb-4">Редагувати задачу</h2>
+                
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Назва</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Назва</label>
                         <input
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
-                            className="w-full border p-2 rounded focus:ring-blue-500 focus:border-blue-500"
+                            // Інпути адаптовано під темну тему
+                            className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
                             required
                         />
                     </div>
+                    
                     <div>
-                        <label className="block text-sm font-medium mb-1">Опис</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Опис</label>
                         <textarea
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            className="w-full border p-2 rounded focus:ring-blue-500 focus:border-blue-500"
-                            rows={3}
+                            // Текстареа адаптовано під темну тему
+                            className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                            rows={4}
                         />
                     </div>
+                    
                     <div>
-                        <label className="block text-sm font-medium mb-1">Статус</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Статус</label>
                         <select
                             value={status}
                             onChange={e => setStatus(Number(e.target.value))}
-                            className="w-full border p-2 rounded focus:ring-blue-500 focus:border-blue-500"
+                            // Селект адаптовано під темну тему
+                            className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors cursor-pointer appearance-none"
                         >
                             <option value={0}>Очікує (Pending)</option>
                             <option value={1}>Виконано (Done)</option>
                             <option value={2}>Відхилено (Rejected)</option>
                         </select>
                     </div>
-                    <div className="flex justify-end gap-2 mt-6">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 bg-gray-100 rounded hover:bg-gray-200">
+                    
+                    <div className="flex justify-end gap-3 mt-8">
+                        <button 
+                            type="button" 
+                            onClick={onClose} 
+                            // Кнопка скасування адаптована
+                            className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        >
                             Скасувати
                         </button>
-                        <button type="submit" disabled={isLoading} className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700">
-                            Зберегти
+                        <button 
+                            type="submit" 
+                            disabled={isLoading} 
+                            className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-800 transition-colors shadow-sm"
+                        >
+                            {isLoading ? 'Збереження...' : 'Зберегти'}
                         </button>
                     </div>
                 </form>
