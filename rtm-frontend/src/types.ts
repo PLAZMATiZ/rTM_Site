@@ -22,8 +22,12 @@ export interface TaskItem {
     tabId: string;
     title: string;
     description: string;
-    status: number; // 0 = Pending, 1 = Done, 2 = Rejected
-    dependentTasks: Dependency[];
+    status: number;
+    priority?: number;
+    complexity?: number;
+    dependentTasks: any[];
+    startedAt: string | null;
+    finishedAt: string | null;
 }
 
 export interface HistoryLog {
@@ -32,4 +36,15 @@ export interface HistoryLog {
     taskId: string | null;
     action: string;
     createdAt: string;
+}
+
+export interface TaskStatistic {
+    id: string;
+    userId: string;
+    taskId: string;
+    taskTitle: string;
+    tabName: string;
+    startedAt: string;
+    finishedAt: string;
+    durationSeconds: number;
 }

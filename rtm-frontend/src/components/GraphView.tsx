@@ -5,7 +5,7 @@ import ReactFlow, {
     type Connection, type Edge, type Node
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import dagre from 'dagre'; // ДОДАНО
+import dagre from 'dagre';
 
 import { TaskNode } from './TaskNode';
 import { TaskModal } from './TaskModal';
@@ -18,34 +18,17 @@ interface GraphViewProps {
     isDarkMode: boolean;
 }
 
-// Функція для автоматичного розрахунку позицій та створення контейнерів
 const getLayoutedElements = (tasks: TaskItem[], edges: Edge[], isDarkMode: boolean) => {
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-    
-    // Налаштування дерева: TB (Top to Bottom), відступи між нодами
-    dagreGraph.setGraph({ rankdir: 'TB', nodesep: 100, ranksep: 120 });
+    const nodeWidth = 260; 
+    const nodeHeight = 130; 
+    const padding = 40; 
+    const groupSpacing = 80;
 
-    const nodeWidth = 260; // Приблизна ширина TaskNode
-    const nodeHeight = 130; // Приблизна висота TaskNode
-
-    // 1. Передаємо розміри в dagre
-    tasks.forEach((task) => {
-        dagreGraph.setNode(task.id, { width: nodeWidth, height: nodeHeight });
-    });
-    edges.forEach((edge) => {
-        dagreGraph.setEdge(edge.source, edge.target);
-    });
-
-    // 2. Викликаємо математику
-    dagre.layout(dagreGraph);
-
-    // 3. Шукаємо "острови" звязаних графів (щоб створити групи)
     const adjList: Record<string, string[]> = {};
     tasks.forEach(t => adjList[t.id] = []);
     edges.forEach(e => {
         adjList[e.source].push(e.target);
-        adjList[e.target].push(e.source); // Зв'язок в обидва боки для пошуку групи
+        adjList[e.target].push(e.source);
     });
 
     const visited = new Set<string>();
@@ -71,36 +54,43 @@ const getLayoutedElements = (tasks: TaskItem[], edges: Edge[], isDarkMode: boole
     });
 
     const finalNodes: Node[] = [];
-    const padding = 50;
+    let currentOffsetX = 0;
 
-    // 4. Формуємо фінальні ноди та контейнери
     clusters.forEach((clusterIds, index) => {
-        const groupId = `group-${index}`;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        const dagreGraph = new dagre.graphlib.Graph();
+        dagreGraph.setDefaultEdgeLabel(() => ({}));
+        dagreGraph.setGraph({ rankdir: 'TB', nodesep: 100, ranksep: 120 });
 
-        // Отримуємо абсолютні позиції від Dagre і шукаємо межі контейнера
+        clusterIds.forEach(id => dagreGraph.setNode(id, { width: nodeWidth, height: nodeHeight }));
+        edges.forEach(edge => {
+            if (clusterIds.includes(edge.source) && clusterIds.includes(edge.target)) {
+                dagreGraph.setEdge(edge.source, edge.target);
+            }
+        });
+
+        dagre.layout(dagreGraph);
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         const absoluteNodes = clusterIds.map(id => {
             const nodeWithPosition = dagreGraph.node(id);
             const x = nodeWithPosition.x - nodeWidth / 2;
             const y = nodeWithPosition.y - nodeHeight / 2;
-            
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            maxX = Math.max(maxX, x + nodeWidth);
-            maxY = Math.max(maxY, y + nodeHeight);
-
-            const task = tasks.find(t => t.id === id)!;
-            return { id, x, y, task };
+            minX = Math.min(minX, x); minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x + nodeWidth); maxY = Math.max(maxY, y + nodeHeight);
+            return { id, x, y, task: tasks.find(t => t.id === id)! };
         });
 
-        // Створюємо контейнер
+        const clusterWidth = maxX - minX + padding * 2;
+        const clusterHeight = maxY - minY + padding * 2;
+        const groupId = `group-${index}`;
+
         finalNodes.push({
             id: groupId,
-            type: 'group', // Вбудований тип React Flow
-            position: { x: minX - padding, y: minY - padding },
+            type: 'group',
+            position: { x: currentOffsetX, y: 0 },
             style: {
-                width: maxX - minX + padding * 2,
-                height: maxY - minY + padding * 2,
+                width: clusterWidth,
+                height: clusterHeight,
                 backgroundColor: isDarkMode ? 'rgba(55, 65, 81, 0.4)' : 'rgba(239, 246, 255, 0.6)',
                 border: `2px dashed ${isDarkMode ? '#4b5563' : '#93c5fd'}`,
                 borderRadius: '24px',
@@ -108,21 +98,19 @@ const getLayoutedElements = (tasks: TaskItem[], edges: Edge[], isDarkMode: boole
             data: {}
         });
 
-        // Додаємо ноди ВЕРЕДИНУ контейнера (рахуємо відносну позицію)
         absoluteNodes.forEach(n => {
             finalNodes.push({
                 id: n.id,
                 type: 'taskNode',
-                parentNode: groupId, // Робить ноду частиною групи
-                extent: 'parent',    // Не дає витягнути ноду за межі групи
-                position: { 
-                    x: n.x - (minX - padding), // Відносно X батька
-                    y: n.y - (minY - padding)  // Відносно Y батька
-                },
+                parentNode: groupId,
+                extent: 'parent',
+                position: { x: n.x - minX + padding, y: n.y - minY + padding },
                 data: { task: n.task },
                 zIndex: 10
             });
         });
+
+        currentOffsetX += clusterWidth + groupSpacing;
     });
 
     return finalNodes;
@@ -134,72 +122,77 @@ export const GraphView: React.FC<GraphViewProps> = ({ tabId, isDarkMode }) => {
     
     const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
     const [isCreating, setIsCreating] = useState(false);
+    
+    // СТЕЙТИ ФОРМИ
     const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [newPriority, setNewPriority] = useState(0);
+    const [newComplexity, setNewComplexity] = useState(0);
 
     const nodeTypes = useMemo(() => ({ taskNode: TaskNode }), []);
 
-    const fetchTasks = async () => {
+    const fetchTasks = useCallback(async () => {
         try {
             const response = await fetch(`${API_URL}/tasks/by-tab/${tabId}`);
+            if (!response.ok) return;
             const tasks: TaskItem[] = await response.json();
 
-            // Спочатку збираємо всі ребра
             const rawEdges: Edge[] = [];
             tasks.forEach(task => {
-                if (task.dependentTasks) {
-                    task.dependentTasks.forEach(dep => {
-                        rawEdges.push({
-                            id: dep.id,
-                            source: dep.parentTaskId,
-                            target: dep.childTaskId,
-                            animated: true,
-                            style: { stroke: isDarkMode ? '#60a5fa' : '#3b82f6', strokeWidth: 2 },
-                        });
+                task.dependentTasks?.forEach(dep => {
+                    rawEdges.push({
+                        id: dep.id,
+                        source: dep.parentTaskId,
+                        target: dep.childTaskId,
+                        animated: true,
+                        style: { stroke: isDarkMode ? '#60a5fa' : '#3b82f6', strokeWidth: 2 },
                     });
-                }
+                });
             });
 
-            // Віддаємо дані в алгоритм для створення контейнерів і позиціонування
             const layoutedNodes = getLayoutedElements(tasks, rawEdges, isDarkMode);
-
             setNodes(layoutedNodes);
             setEdges(rawEdges);
-        } catch (error) {
-            console.error("Помилка завантаження графа", error);
-        }
-    };
+        } catch (error) { console.error("Error loading graph:", error); }
+    }, [tabId, isDarkMode, setNodes, setEdges]);
 
-    useEffect(() => { fetchTasks(); }, [tabId, isDarkMode]);
+    useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
     const onConnect = useCallback(async (params: Connection) => {
         if (!params.source || !params.target) return;
-        try {
-            const response = await fetch(`${API_URL}/dependencies`, {
+        const existingEdge = edges.find(e => e.source === params.source && e.target === params.target);
+
+        if (existingEdge) {
+            await fetch(`${API_URL}/dependencies/${params.source}/${params.target}`, { method: 'DELETE' });
+        } else {
+            await fetch(`${API_URL}/dependencies`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ parentTaskId: params.source, childTaskId: params.target })
             });
+        }
+        fetchTasks();
+    }, [edges, fetchTasks]);
 
-            if (response.ok) {
-                // Після з'єднання граф може змінити структуру, тому перемальовуємо все
-                fetchTasks(); 
-            }
-        } catch (error) { console.error(error); }
-    }, [isDarkMode]);
-
+    // ОНОВЛЕНЕ СТВОРЕННЯ
     const handleCreateTask = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newTaskTitle.trim()) return;
-        try {
-            await fetch(`${API_URL}/tasks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tabId, title: newTaskTitle, description: '' })
-            });
-            setNewTaskTitle('');
-            setIsCreating(false);
-            fetchTasks(); 
-        } catch (error) { console.error(error); }
+        await fetch(`${API_URL}/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                tabId, 
+                title: newTaskTitle, 
+                description: '', 
+                priority: newPriority, 
+                complexity: newComplexity 
+            })
+        });
+        setNewTaskTitle('');
+        setNewPriority(0);
+        setNewComplexity(0);
+        setIsCreating(false);
+        fetchTasks();
     };
 
     return (
@@ -215,6 +208,8 @@ export const GraphView: React.FC<GraphViewProps> = ({ tabId, isDarkMode }) => {
                 }}
                 nodeTypes={nodeTypes}
                 fitView
+                minZoom={0.01}
+                maxZoom={10}
                 style={{ background: isDarkMode ? '#111827' : '#f9fafb' }}
             >
                 <Background color={isDarkMode ? '#374151' : '#ccc'} gap={16} />
@@ -224,19 +219,32 @@ export const GraphView: React.FC<GraphViewProps> = ({ tabId, isDarkMode }) => {
                     maskColor={isDarkMode ? 'rgba(17, 24, 39, 0.7)' : 'rgba(249, 250, 251, 0.7)'} 
                 />
                 
-                <Panel position="top-right" className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                {/* ОНОВЛЕНА ПАНЕЛЬ СТВОРЕННЯ */}
+                <Panel position="top-right" className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 w-72">
                     {!isCreating ? (
-                        <button onClick={() => setIsCreating(true)} className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded hover:bg-blue-700 transition">
+                        <button onClick={() => setIsCreating(true)} className="w-full py-2 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-500 transition">
                             + Додати задачу
                         </button>
                     ) : (
-                        <form onSubmit={handleCreateTask} className="flex gap-2">
+                        <form onSubmit={handleCreateTask} className="flex flex-col gap-3">
                             <input 
                                 type="text" autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Назва задачі..."
-                                className="px-2 py-1 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                                className="px-3 py-2 text-sm border rounded-xl dark:bg-gray-900 dark:border-gray-600 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            <button type="submit" className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">✓</button>
-                            <button type="button" onClick={() => setIsCreating(false)} className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600">✕</button>
+                            
+                            <div className="flex gap-2">
+                                <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-1 flex">
+                                    {['Низ', 'Сер', 'Вис'].map((l, i) => <button type="button" key={i} onClick={() => setNewPriority(i)} className={`flex-1 text-[10px] py-1 rounded-md font-bold transition-all ${newPriority === i ? (i===0?'bg-green-500 text-white':i===1?'bg-yellow-500 text-white':'bg-red-500 text-white') : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{l}</button>)}
+                                </div>
+                                <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-1 flex">
+                                    {['Лег', 'Норм', 'Скл'].map((l, i) => <button type="button" key={i} onClick={() => setNewComplexity(i)} className={`flex-1 text-[10px] py-1 rounded-md font-bold transition-all ${newComplexity === i ? 'bg-indigo-500 text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{l}</button>)}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 mt-1">
+                                <button type="button" onClick={() => setIsCreating(false)} className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">Скасувати</button>
+                                <button type="submit" className="flex-1 py-1.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-500 transition">Створити</button>
+                            </div>
                         </form>
                     )}
                 </Panel>
@@ -245,12 +253,9 @@ export const GraphView: React.FC<GraphViewProps> = ({ tabId, isDarkMode }) => {
             {selectedTask && (
                 <TaskModal 
                     task={selectedTask} 
+                    allTasks={nodes.filter(n => n.type === 'taskNode').map(n => n.data.task)}
                     onClose={() => setSelectedTask(null)} 
-                    onSave={async (id, title, desc, status) => {
-                        await fetch(`${API_URL}/tasks/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, description: desc }) });
-                        await fetch(`${API_URL}/tasks/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-                        fetchTasks();
-                    }} 
+                    onSaveSuccess={fetchTasks} 
                 />
             )}
         </div>
