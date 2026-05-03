@@ -33,8 +33,8 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
     const [childIds, setChildIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [parentSearch, setParentSearch] = useState('');
-    const [childSearch, setChildSearch] = useState('');
+    const [_parentSearch, _setParentSearch] = useState('');
+    const [_childSearch, _setChildSearch] = useState('');
     const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; task: TaskItem | null }>({ visible: false, x: 0, y: 0, task: null });
     const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
 
@@ -53,8 +53,8 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
         return () => window.removeEventListener('click', handleClickOutside);
     }, []);
 
-    const filteredParents = tasks.filter(t => t.title.toLowerCase().includes(parentSearch.toLowerCase()));
-    const filteredChildren = tasks.filter(t => t.title.toLowerCase().includes(childSearch.toLowerCase()));
+    // const filteredParents = tasks.filter(t => t.title.toLowerCase().includes(parentSearch.toLowerCase()));
+    // const filteredChildren = tasks.filter(t => t.title.toLowerCase().includes(childSearch.toLowerCase()));
 
     const handleCreateAdvanced = async (e: React.FormEvent) => {
         e.preventDefault();
