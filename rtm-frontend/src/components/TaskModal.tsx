@@ -29,6 +29,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, allTasks, onClose, o
     const [priority, setPriority] = useState(task.priority || 0);
     const [complexity, setComplexity] = useState(task.complexity || 0);
     const [isLoading, setIsLoading] = useState(false);
+    const [deadline, setDeadline] = useState(task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '');
 
     const [parentSearch, setParentSearch] = useState('');
     const [childSearch, setChildSearch] = useState('');
@@ -50,8 +51,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, allTasks, onClose, o
         try {
             await fetch(`${API_URL}/tasks/${task.id}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description, priority, complexity })
-            });
+                body: JSON.stringify({
+                    title, description, priority, complexity,
+                    deadline: deadline ? new Date(deadline).toISOString() : null // <--- Передаємо дедлайн
+                })
+            });;
             await fetch(`${API_URL}/tasks/${task.id}/status`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status })
@@ -74,7 +78,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, allTasks, onClose, o
             await Promise.all(apiPromises);
             onSaveSuccess();
             onClose();
-        } catch (error) { console.error("Помилка збереження", error); } 
+        } catch (error) { console.error("Помилка збереження", error); }
         finally { setIsLoading(false); }
     };
 
@@ -100,7 +104,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, allTasks, onClose, o
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Пріоритет</label>
                                     <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1">
                                         {['Низ', 'Сер', 'Вис'].map((l, i) => (
-                                            <button type="button" key={i} onClick={() => setPriority(i)} className={`flex-1 text-xs py-1 rounded-md font-bold transition-all ${priority === i ? (i===0?'bg-green-500 text-white':i===1?'bg-yellow-500 text-white':'bg-red-500 text-white') : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{l}</button>
+                                            <button type="button" key={i} onClick={() => setPriority(i)} className={`flex-1 text-xs py-1 rounded-md font-bold transition-all ${priority === i ? (i === 0 ? 'bg-green-500 text-white' : i === 1 ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white') : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{l}</button>
                                         ))}
                                     </div>
                                 </div>
@@ -112,7 +116,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, allTasks, onClose, o
                                         ))}
                                     </div>
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Дедлайн</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={deadline}
+                                        onChange={e => setDeadline(e.target.value)}
+                                        className="w-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
                             </div>
+
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Статус</label>
@@ -125,8 +139,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, allTasks, onClose, o
                         </div>
 
                         <div className="space-y-4">
-                            {[ { label: 'Батьківські задачі', search: parentSearch, setSearch: setParentSearch, items: filteredParents, selected: parentIds, setSelected: setParentIds },
-                               { label: 'Дочірні задачі', search: childSearch, setSearch: setChildSearch, items: filteredChildren, selected: childIds, setSelected: setChildIds }
+                            {[{ label: 'Батьківські задачі', search: parentSearch, setSearch: setParentSearch, items: filteredParents, selected: parentIds, setSelected: setParentIds },
+                            { label: 'Дочірні задачі', search: childSearch, setSearch: setChildSearch, items: filteredChildren, selected: childIds, setSelected: setChildIds }
                             ].map((col, idx) => (
                                 <div key={idx} className="flex flex-col gap-1">
                                     <span className="text-xs font-bold text-gray-500 uppercase">{col.label}</span>

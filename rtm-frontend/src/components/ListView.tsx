@@ -29,6 +29,7 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
     const [newDesc, setNewDesc] = useState('');
     const [newPriority, setNewPriority] = useState(0);
     const [newComplexity, setNewComplexity] = useState(0);
+    const [newDeadline, setNewDeadline] = useState(''); // Стейт для дедлайну
     const [parentIds, setParentIds] = useState<string[]>([]);
     const [childIds, setChildIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -79,7 +80,14 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
         try {
             const taskRes = await fetch(`${API_URL}/tasks`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tabId, title: newTitle, description: newDesc, priority: newPriority, complexity: newComplexity })
+                body: JSON.stringify({ 
+                    tabId, 
+                    title: newTitle, 
+                    description: newDesc, 
+                    priority: newPriority, 
+                    complexity: newComplexity,
+                    deadline: newDeadline ? new Date(newDeadline).toISOString() : null // Відправка дедлайну
+                })
             });
             if (!taskRes.ok) throw new Error("Помилка створення");
             const newTask = await taskRes.json();
@@ -88,13 +96,32 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
             const cPromises = childIds.map(id => fetch(`${API_URL}/dependencies`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parentTaskId: newTask.id, childTaskId: id }) }));
 
             await Promise.all([...pPromises, ...cPromises]);
-            setNewTitle(''); setNewDesc(''); setNewPriority(0); setNewComplexity(0); setParentIds([]); setChildIds([]);
+            setNewTitle(''); setNewDesc(''); setNewPriority(0); setNewComplexity(0); setNewDeadline(''); setParentIds([]); setChildIds([]);
             setIsCreating(false);
             await fetchTasks();
         } catch (error) { console.error(error); } finally { setIsSaving(false); }
     };
 
+    const checkActiveDescendants = (parentId: string, visited = new Set<string>()): boolean => {
+        const parent = tasks.find(t => t.id === parentId);
+        if (!parent || !parent.dependentTasks) return false;
+        for (const dep of parent.dependentTasks) {
+            if (visited.has(dep.childTaskId)) continue;
+            visited.add(dep.childTaskId);
+            const child = tasks.find(t => t.id === dep.childTaskId);
+            if (child && child.status === STATUS_PENDING) return true;
+            if (checkActiveDescendants(dep.childTaskId, visited)) return true;
+        }
+        return false;
+    };
+
     const handleStatusChange = async (taskId: string, newStatus: number) => {
+        if (newStatus === STATUS_DONE) {
+            if (checkActiveDescendants(taskId, new Set([taskId]))) {
+                alert("Спочатку завершіть або відхиліть ВСІ дочірні задачі!");
+                return;
+            }
+        }
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
         try {
             await fetch(`${API_URL}/tasks/${taskId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
@@ -137,13 +164,23 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
         return roots.map(root => ({ root, descendants: getDescendants(root, 1, new Set([root.id])) }));
     }, [tasks, isGrouped]);
 
+    // Форматування дедлайну
+    const formatDeadline = (deadlineStr?: string | null) => {
+        if (!deadlineStr) return null;
+        const date = new Date(deadlineStr);
+        const now = new Date();
+        const isOverdue = date < now;
+        const formatted = date.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return { text: formatted, isOverdue };
+    };
+
     const TaskTrigger = ({ task }: { task: TaskItem }) => {
         const isDone = task.status === STATUS_DONE;
         const isRejected = task.status === STATUS_REJECTED;
         return (
             <button onClick={(e) => { e.stopPropagation(); if (!isRejected) handleStatusChange(task.id, isDone ? STATUS_PENDING : STATUS_DONE); }}
                 className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all 
-                    ${isDone ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-500/30' : 'bg-transparent border-gray-400 dark:border-gray-600 hover:border-blue-500'} 
+                    ${isDone ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-500/30' : 'bg-transparent border-gray-400 dark:border-gray-500 hover:border-blue-500'} 
                     ${isRejected ? 'bg-gray-200 border-gray-300 dark:bg-gray-800 dark:border-gray-700 cursor-not-allowed' : ''}`}
             >
                 {isDone && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
@@ -154,6 +191,8 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
 
     const TaskRow = ({ task, level = 0, isSubTask = false }: { task: TaskItem, level?: number, isSubTask?: boolean }) => {
         const isPending = task.status === STATUS_PENDING;
+        const deadlineInfo = formatDeadline(task.deadline);
+
         return (
             <div className="relative flex items-center justify-between group py-1.5" style={{ marginLeft: level ? `${level * 24}px` : '0' }} onContextMenu={(e) => handleContextMenu(e, task)}>
                 {isSubTask && (
@@ -169,6 +208,19 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
                             <h4 className={`text-sm font-bold truncate select-none transition-colors ${!isPending ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100 group-hover:text-blue-600'}`}>{task.title}</h4>
                             {task.priority !== undefined && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES[0]}`}>{PRIORITY_LABELS[task.priority] || 'Низ'}</span>}
                             {task.complexity !== undefined && <span className="text-[10px]">{COMPLEXITY_ICONS[task.complexity] || '🌱'}</span>}
+                            
+                            {/* Відображення дедлайну */}
+                            {deadlineInfo && (
+                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium border flex items-center gap-1
+                                    ${!isPending ? 'text-gray-400 border-transparent dark:text-gray-600' : 
+                                      deadlineInfo.isOverdue 
+                                        ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50' 
+                                        : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
+                                    }`}
+                                >
+                                    ⏱ {deadlineInfo.text}
+                                </span>
+                            )}
                         </div>
                         {task.description && <p className="text-[10px] text-gray-400 dark:text-gray-500 line-clamp-1 mt-0.5">{task.description}</p>}
                     </div>
@@ -219,6 +271,15 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
                                             {['Лег', 'Норм', 'Скл'].map((l, i) => <button type="button" key={i} onClick={() => setNewComplexity(i)} className={`flex-1 text-xs py-1.5 rounded-md font-bold transition-all ${newComplexity === i ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>{l}</button>)}
                                         </div>
                                     </div>
+                                    <div className="flex-1">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Дедлайн</span>
+                                        <input 
+                                            type="datetime-local" 
+                                            value={newDeadline} 
+                                            onChange={(e) => setNewDeadline(e.target.value)} 
+                                            className="w-full mt-1 px-3 py-1.5 text-[11px] bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -241,8 +302,10 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
                             ))}
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/40">
-                            <button type="button" onClick={() => setIsCreating(false)} className="px-5 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 transition">Скасувати</button>
-                            <button type="submit" disabled={isSaving} className="px-7 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Створити</button>
+                            <button type="button" onClick={() => setIsCreating(false)} className="px-5 py-2 text-sm font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition">Скасувати</button>
+                            <button type="submit" disabled={isSaving} className="px-7 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                                {isSaving ? 'Створення...' : 'Створити'}
+                            </button>
                         </div>
                     </motion.form>
                 )}
@@ -251,39 +314,49 @@ export const ListView: React.FC<ListViewProps> = ({ tabId }) => {
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-10">
                 <ul className="space-y-4">
                     <AnimatePresence mode="popLayout">
-                        {groupedTasks.map((group) => (
-                            <motion.li layout key={group.root.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                className={`p-4 rounded-2xl border transition-all duration-300
-                                    ${group.root.status === STATUS_PENDING 
-                                        ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 shadow-sm' 
-                                        : 'bg-gray-100/50 dark:bg-gray-900/40 border-transparent opacity-70'}`}
-                            >
-                                <TaskRow task={group.root} />
-                                {group.descendants.length > 0 && (
-                                    <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700/30 space-y-1">
-                                        {group.descendants.map(({ task, level }) => (
-                                            <TaskRow key={`${group.root.id}-${task.id}`} task={task} level={level} isSubTask={true} />
-                                        ))}
-                                    </div>
-                                )}
-                            </motion.li>
-                        ))}
+                        {groupedTasks.map((group) => {
+                            const isRootActive = group.root.status === STATUS_PENDING;
+
+                            return (
+                                <motion.li
+                                    layout
+                                    key={group.root.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`p-4 rounded-2xl border transition-all duration-300
+                            ${isRootActive
+                                            ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 shadow-sm'
+                                            : 'bg-gray-100/50 dark:bg-gray-900/40 border-transparent opacity-70'
+                                        }`}
+                                >
+                                    <TaskRow task={group.root} />
+
+                                    {group.descendants.length > 0 && (
+                                        <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700/30 space-y-1">
+                                            {group.descendants.map(({ task, level }) => (
+                                                <TaskRow key={`${group.root.id}-${task.id}`} task={task} level={level} isSubTask={true} />
+                                            ))}
+                                        </div>
+                                    )}
+                                </motion.li>
+                            );
+                        })}
                     </AnimatePresence>
                 </ul>
             </div>
 
-            {/* КОНТЕКСТНЕ МЕНЮ ТА МОДАЛКА (без змін) */}
+            {/* КОНТЕКСТНЕ МЕНЮ */}
             {contextMenu.visible && contextMenu.task && (
-                <div className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl w-52 py-1 text-sm overflow-hidden" style={{ top: contextMenu.y, left: contextMenu.x }} onClick={e => e.stopPropagation()}>
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2" onClick={() => { setEditingTask(contextMenu.task); setContextMenu({ ...contextMenu, visible: false }); }}>✏️ Редагувати</button>
+                <div className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl w-52 py-1 text-sm font-medium overflow-hidden" style={{ top: contextMenu.y, left: contextMenu.x }} onClick={e => e.stopPropagation()}>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-700 dark:text-gray-200" onClick={() => { setEditingTask(contextMenu.task); setContextMenu({ ...contextMenu, visible: false }); }}>✏️ Редагувати</button>
                     {!contextMenu.task.startedAt ? (
-                        <button className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold" onClick={async () => { await fetch(`${API_URL}/tasks/${contextMenu.task!.id}/take`, { method: 'POST' }); fetchTasks(); setContextMenu({ ...contextMenu, visible: false }); }}>🚀 Взяти в роботу</button>
+                        <button className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400" onClick={async () => { await fetch(`${API_URL}/tasks/${contextMenu.task!.id}/take`, { method: 'POST' }); fetchTasks(); setContextMenu({ ...contextMenu, visible: false }); }}>🚀 Взяти в роботу</button>
                     ) : (
                         <button className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500" onClick={async () => { await fetch(`${API_URL}/tasks/${contextMenu.task!.id}/untake`, { method: 'POST' }); fetchTasks(); setContextMenu({ ...contextMenu, visible: false }); }}>🛑 Відмінити роботу</button>
                     )}
-                    <button className="w-full text-left px-4 py-2 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600" onClick={() => { handleStatusChange(contextMenu.task!.id, STATUS_REJECTED); setContextMenu({ ...contextMenu, visible: false }); }}>❌ Відхилити</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400" onClick={() => { handleStatusChange(contextMenu.task!.id, STATUS_REJECTED); setContextMenu({ ...contextMenu, visible: false }); }}>❌ Відхилити</button>
                     <div className="h-[1px] bg-gray-200 dark:bg-gray-700 my-1"></div>
-                    <button className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 font-bold" onClick={() => { handleDeleteTask(contextMenu.task!.id); setContextMenu({ ...contextMenu, visible: false }); }}>🗑️ Видалити</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400" onClick={() => { handleDeleteTask(contextMenu.task!.id); setContextMenu({ ...contextMenu, visible: false }); }}>🗑️ Видалити</button>
                 </div>
             )}
 

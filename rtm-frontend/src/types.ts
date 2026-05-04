@@ -28,6 +28,7 @@ export interface TaskItem {
     dependentTasks: any[];
     startedAt: string | null;
     finishedAt: string | null;
+    deadline?: string | null;
 }
 
 export interface HistoryLog {
