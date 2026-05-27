@@ -180,15 +180,59 @@ export const TakenTasksView: React.FC<TakenTasksProps> = ({ userId, onNavigateTo
                                     </div>
                                 )}
 
-                                <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-700/50">
-                                    {task.startedAt ? <LiveTimer startedAt={task.startedAt} finishedAt={task.finishedAt} /> : <div></div>}
-                                    <button
-                                        onClick={(e) => handleMainStatusChange(task.id, isDone ? 0 : 1, hasActiveChildren, e)}
-                                        disabled={!isDone && hasActiveChildren}
-                                        className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${isDone ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' : hasActiveChildren ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800' : 'bg-green-500 hover:bg-green-400 text-white shadow-md'}`}
-                                    >
-                                        {isDone ? 'Повернути' : '✓ Виконати'}
-                                    </button>
+                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                                    <LiveTimer
+                                        startedAt={task.startedAt}
+                                        finishedAt={task.finishedAt}
+                                        isPaused={task.isPaused}
+                                        totalSpentSeconds={task.totalSpentSeconds}
+                                    />
+
+                                    <div className="flex items-center gap-2">
+                                        {/* Кнопка Паузи / Продовження */}
+                                        {!isDone && (
+                                            task.isPaused ? (
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        await fetch(`${API_URL}/tasks/${task.id}/take`, { method: 'POST' });
+                                                        fetchTakenTasks();
+                                                    }}
+                                                    className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:hover:bg-blue-900/60 transition"
+                                                    title="Продовжити роботу"
+                                                >
+                                                    ▶
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        await fetch(`${API_URL}/tasks/${task.id}/pause`, { method: 'POST' });
+                                                        fetchTakenTasks();
+                                                    }}
+                                                    className="p-1.5 rounded-lg bg-yellow-100 text-yellow-600 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-500 dark:hover:bg-yellow-900/50 transition"
+                                                    title="Поставити на паузу"
+                                                >
+                                                    ⏸
+                                                </button>
+                                            )
+                                        )}
+
+                                        {/* Кнопка Виконати */}
+                                        <button
+                                            onClick={(e) => handleMainStatusChange(task.id, isDone ? 0 : 1, hasActiveChildren, e)}
+                                            disabled={!isDone && hasActiveChildren}
+                                            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all 
+                ${isDone
+                                                    ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                                    : hasActiveChildren
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800'
+                                                        : 'bg-green-500 hover:bg-green-400 text-white shadow-md'
+                                                }`}
+                                        >
+                                            {isDone ? 'Повернути' : '✓ Виконати'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );

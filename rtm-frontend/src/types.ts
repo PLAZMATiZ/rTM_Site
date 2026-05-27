@@ -29,6 +29,8 @@ export interface TaskItem {
     startedAt: string | null;
     finishedAt: string | null;
     deadline?: string | null;
+    isPaused: boolean;
+    totalSpentSeconds: number;
 }
 
 export interface HistoryLog {
