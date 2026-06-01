@@ -6,7 +6,7 @@ import { TabHistory } from './TabHistory';
 import { TakenTasksView } from './TakenTasksView';
 import { StatisticsView } from './StatisticsView';
 
-const API_URL = 'https://rtmapi-production.up.railway.app/api';
+const API_URL = 'https://rtm-temp.reaniplay.com/api';
 
 interface DashboardProps {
     userId: string;

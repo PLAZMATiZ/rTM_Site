@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { TaskItem } from '../types';
 import { LiveTimer } from './LiveTimer';
 
-const API_URL = 'https://rtmapi-production.up.railway.app/api';
+const API_URL = 'https://rtm-temp.reaniplay.com/api';
 
 interface TakenTasksProps {
     userId: string;

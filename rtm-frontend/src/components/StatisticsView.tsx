@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { TaskStatistic } from '../types';
 
-const API_URL = 'https://rtmapi-production.up.railway.app/api';
+const API_URL = 'https://rtm-temp.reaniplay.com/api';
 
 export const StatisticsView: React.FC<{ userId: string }> = ({ userId }) => {
     const [stats, setStats] = useState<TaskStatistic[]>([]);

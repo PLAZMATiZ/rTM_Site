@@ -11,7 +11,7 @@ import { TaskNode } from './TaskNode';
 import { TaskModal } from './TaskModal';
 import type { TaskItem } from '../types';
 
-const API_URL = 'https://rtmapi-production.up.railway.app/api';
+const API_URL = 'https://rtm-temp.reaniplay.comp/api';
 
 interface GraphViewProps {
     tabId: string;

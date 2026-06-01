@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_URL = 'https://rtmapi-production.up.railway.app/api';
+const API_URL = 'https://rtm-temp.reaniplay.com/api';
 
 interface LoginProps {
     onLoginSuccess: (userId: string) => void;

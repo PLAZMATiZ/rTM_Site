@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { TaskItem } from '../types';
 import { TaskModal } from './TaskModal';
 
-const API_URL = 'https://rtmapi-production.up.railway.app/api';
+const API_URL = 'https://rtm-temp.reaniplay.com/api';
 
 const STATUS_PENDING = 0;
 const STATUS_DONE = 1;
